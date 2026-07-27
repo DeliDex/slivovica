@@ -55,8 +55,8 @@ const stateRef = db.ref("slivovica"); // vsetky data ulozene pod jednym uzlom
 /* ======================================================================================= */
 
 const OBJ=0.7,CENA=6.36,TOT=51.3;
-let names=["Bobko","Tomek","Ajka","Julko a Janka","Rudko"];
-let vals=[0,0,0,0,0];
+let names=["Bobko","Tomek","Ajka","Julko a Janka","Rudko","Medovina"];
+let vals=[0,0,0,0,0,0];
 let ready=false;
 
 // Ak uzol este neexistuje, zalozime ho s pociatocnymi hodnotami
@@ -80,7 +80,7 @@ stateRef.on("value", snap=>{
 function draw(){
 if(!ready) return;
 let tb="",b=vals.reduce((a,x)=>a+x,0),u=b*OBJ;
-for(let i=0;i<5;i++){
+for(let i=0;i<6;i++){
 tb+=`<tr><td><input class=name value="${names[i]}" onchange="renameGuest(${i},this.value)"></td>
 <td><div class=qty><button class="pm minus" onclick="chg(${i},-1)">-</button><b>${vals[i]}</b><button class="pm plus" ${(u+OBJ>TOT)?'disabled':''} onclick="chg(${i},1)">+</button></div></td>
 <td>${(vals[i]*OBJ).toFixed(1)} l</td><td>${(vals[i]*CENA).toFixed(2)} €</td></tr>`;
@@ -109,7 +109,7 @@ function chg(i,d){
 function resetAll(){modalBg.style.display="flex"}
 function closeModal(){modalBg.style.display="none"}
 function doReset(){
-  stateRef.set({names, vals:[0,0,0,0,0]});
+  stateRef.set({names, vals:[0,0,0,0,0,0]});
   closeModal();
 }
 </script></body></html>
