@@ -1,0 +1,104 @@
+<!doctype html><html lang="sk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rozdelenie slivovice</title><style>
+body{margin:0;background:#0f172a;color:#eee;font:16px Arial} .wrap{max-width:980px;margin:auto;padding:20px}
+.card{background:#1e293b;border-radius:16px;padding:20px;box-shadow:0 8px 25px #0005}
+h1{text-align:center;margin-bottom:40px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:15px 0}
+.box{background:#334155;padding:18px;border-radius:12px;font-size:19px}.box b{font-size:24px;color:#fbbf24}.box .val{display:block;margin-top:10px}.progress{height:20px;background:#475569;border-radius:20px;overflow:hidden}.bar{height:100%;background:#22c55e;width:0%;transition:.3s}
+table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{padding:10px;border-bottom:1px solid #475569;text-align:center;overflow:hidden;font-size:18px;width:25%}
+th:last-child,td:last-child{font-variant-numeric:tabular-nums}
+th{color:#fbbf24;font-weight:600;letter-spacing:.3px}
+button{border:none;border-radius:8px;padding:8px 12px;font-size:18px;cursor:pointer}.pm{width:36px}.plus{background:#16a34a;color:#fff}.minus{background:#dc2626;color:#fff}
+.qty{display:inline-flex;align-items:center;gap:20px;justify-content:center}.qty b{font-size:22px;min-width:24px;display:inline-block}
+input.name{background:transparent;color:#fff;border:none;text-align:center;width:100%;font-size:18px}
+.actions{margin-top:15px;display:flex;gap:10px;flex-wrap:wrap}
+</style></head><body><div class=wrap><div class=card><h1>🍑 Rozdelenie slivovice</h1>
+<div class=grid><div class=box>Celkový objem / cena<br><span class=val><b>51.3 l</b> / <b>466.10 €</b></span></div><div class=box>Rozdelené<br><span class=val><b id=u>0.0 l</b></span></div><div class=box>Zostáva<br><span class=val><b id=r>51.3 l</b></span></div><div class=box>Cena<br><span class=val><b id=c>0.00 €</b></span></div></div>
+<div class=progress><div id=bar class=bar></div></div><br>
+<table><thead><tr><th>Meno</th><th>Fľaše</th><th>Litre</th><th>Cena</th></tr></thead><tbody id=t></tbody></table>
+<div class=actions><button onclick=resetAll()>🔄 Reset</button></div>
+<div id=modalBg style="display:none;position:fixed;inset:0;background:#000a;align-items:center;justify-content:center;z-index:10">
+<div style="background:#1e293b;padding:25px 30px;border-radius:14px;max-width:320px;text-align:center;box-shadow:0 8px 25px #0008">
+<p style="margin:0 0 18px;font-size:17px">Naozaj chceš resetovať všetky údaje?</p>
+<div style="display:flex;gap:10px;justify-content:center">
+<button onclick=doReset() style="background:#dc2626;color:#fff">Áno, resetovať</button>
+<button onclick=closeModal() style="background:#475569;color:#fff">Zrušiť</button>
+</div></div></div>
+</div></div>
+<!-- Firebase SDK (compat verzia, funguje priamo v prehliadači bez buildu) -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script>
+/* ====== 1) SEM VLOŽ SVOJ FIREBASE CONFIG (Project settings > General > Your apps) ====== */
+const firebaseConfig = {
+  apiKey: "AIzaSyBPIYoqtCSQ8QlON-b332XbuZkGRUsSOeY",
+  authDomain: "slivovica-rozdelenie.firebaseapp.com",
+  databaseURL: "https://slivovica-rozdelenie-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "slivovica-rozdelenie",
+  storageBucket: "slivovica-rozdelenie.firebasestorage.app",
+  messagingSenderId: "382689873654",
+  appId: "1:382689873654:web:4165908f21d899ea5766d7"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const stateRef = db.ref("slivovica"); // vsetky data ulozene pod jednym uzlom
+/* ======================================================================================= */
+
+const OBJ=0.7,CENA=6.36,TOT=51.3;
+let names=["Bobko","Tomek","Ajka","Julko a Janka","Rudko"];
+let vals=[0,0,0,0,0];
+let ready=false;
+
+// Ak uzol este neexistuje, zalozime ho s pociatocnymi hodnotami
+stateRef.once("value").then(snap=>{
+  if(!snap.exists()){
+    stateRef.set({names,vals});
+  }
+});
+
+// Realtime listener - kazda zmena v databaze (od ktorehokolvek pouzivatela) sa hned prejavi u vsetkych
+stateRef.on("value", snap=>{
+  const data = snap.val();
+  if(data){
+    names = data.names || names;
+    vals = data.vals || vals;
+  }
+  ready = true;
+  draw();
+});
+
+function draw(){
+if(!ready) return;
+let tb="",b=vals.reduce((a,x)=>a+x,0),u=b*OBJ;
+for(let i=0;i<5;i++){
+tb+=`<tr><td><input class=name value="${names[i]}" onchange="renameGuest(${i},this.value)"></td>
+<td><div class=qty><button class="pm minus" onclick="chg(${i},-1)">-</button><b>${vals[i]}</b><button class="pm plus" ${(u+OBJ>TOT)?'disabled':''} onclick="chg(${i},1)">+</button></div></td>
+<td>${(vals[i]*OBJ).toFixed(1)} l</td><td>${(vals[i]*CENA).toFixed(2)} €</td></tr>`;
+}
+t.innerHTML=tb;u=u.toFixed(1);r.textContent=(TOT-u).toFixed(1)+" l";this.u.textContent=u+" l";c.textContent=(vals.reduce((a,x)=>a+x,0)*CENA).toFixed(2)+" €";
+let p=Math.min(100,(u/TOT*100));bar.style.width=p+"%";bar.style.background=p>=100?"#ef4444":"#22c55e";}
+
+function renameGuest(i,val){
+  names[i]=val;
+  stateRef.child("names").set(names);
+}
+
+// Transakcia zabezpeci, ze aj ked dvaja ludia kliknu + naraz, celkovy sucet neprestreli TOT
+function chg(i,d){
+  stateRef.transaction(data=>{
+    if(!data) return data;
+    const v = data.vals || [0,0,0,0,0];
+    const sum = v.reduce((a,x)=>a+x,0);
+    if(d>0 && (sum+1)*OBJ>TOT) return; // zrusi transakciu, nic sa nezmeni
+    v[i] = Math.max(0, v[i]+d);
+    data.vals = v;
+    return data;
+  });
+}
+
+function resetAll(){modalBg.style.display="flex"}
+function closeModal(){modalBg.style.display="none"}
+function doReset(){
+  stateRef.set({names, vals:[0,0,0,0,0]});
+  closeModal();
+}
+</script></body></html>
